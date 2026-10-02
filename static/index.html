@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jev Ticket Manager</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --text: #1b1f24; --muted: #667085; --border: #e4e7ec;
+    --accent: #3b5bdb; --accent-text: #ffffff; --danger: #c92a2a;
+    --finance: #2b8a3e; --finance-bg: #ebfbee;
+    --technical: #1c7ed6; --technical-bg: #e7f5ff;
+    --sales: #e8590c; --sales-bg: #fff4e6;
+    --triage: #7048e8; --triage-bg: #f3f0ff;
+    --bar-bg: #eef0f3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101215; --panel: #181b20; --text: #e6e8eb; --muted: #98a2b3; --border: #2a2f37;
+      --accent: #748ffc; --accent-text: #0b0d10; --danger: #ff8787;
+      --finance: #69db7c; --finance-bg: #16271b;
+      --technical: #4dabf7; --technical-bg: #11222f;
+      --sales: #ffa94d; --sales-bg: #2b1f12;
+      --triage: #b197fc; --triage-bg: #211b33;
+      --bar-bg: #262b33;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { padding: 16px 24px; border-bottom: 1px solid var(--border); background: var(--panel);
+    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 18px; }
+  header span { color: var(--muted); }
+  .warn { margin: 16px 24px 0; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--danger);
+    color: var(--danger); display: none; }
+  main { display: grid; grid-template-columns: 360px 1fr; gap: 20px; padding: 20px 24px; }
+  @media (max-width: 960px) { main { grid-template-columns: 1fr; padding: 16px; } }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 12px; }
+  label { display: block; font-weight: 600; margin: 10px 0 4px; font-size: 13px; }
+  input, textarea, select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg); color: var(--text); font: inherit; }
+  textarea { min-height: 120px; resize: vertical; }
+  button { font: inherit; cursor: pointer; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--panel); color: var(--text); padding: 6px 10px; }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent);
+    width: 100%; margin-top: 12px; padding: 10px; font-weight: 600; }
+  button:disabled { opacity: .6; cursor: wait; }
+  .samples { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .samples button { font-size: 12px; padding: 4px 8px; color: var(--muted); }
+  .error { color: var(--danger); margin-top: 8px; min-height: 1em; }
+  #result { margin-top: 16px; display: none; }
+  .route { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .reason { color: var(--muted); margin-bottom: 10px; }
+  .bar { display: grid; grid-template-columns: 76px 1fr 44px; align-items: center; gap: 8px; margin: 4px 0; font-size: 13px; }
+  .bar .track { background: var(--bar-bg); border-radius: 4px; height: 8px; overflow: hidden; }
+  .bar .fill { height: 100%; border-radius: 4px; background: var(--muted); }
+  .bar .pct { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+  .chip.p1 { color: var(--danger); border-color: var(--danger); font-weight: 700; }
+  .chip.p2 { color: var(--sales); border-color: var(--sales); }
+  .board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; align-items: start; }
+  @media (max-width: 1280px) { .board { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .board { grid-template-columns: 1fr; } }
+  .col { border-radius: 10px; border: 1px solid var(--border); background: var(--panel); min-height: 200px; }
+  .col-head { padding: 12px 14px; border-bottom: 1px solid var(--border); border-top: 4px solid var(--c);
+    border-radius: 10px 10px 0 0; }
+  .col-head strong { color: var(--c); font-size: 15px; }
+  .col-head .count { float: right; color: var(--muted); }
+  .col-head p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+  .cards { padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+  .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 20px 0; }
+  .card { background: var(--cbg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+  .card.resolved { opacity: .55; }
+  .card.flash { outline: 2px solid var(--c); }
+  .card-top { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; color: var(--muted); }
+  .card h3 { font-size: 14px; margin: 4px 0; overflow-wrap: anywhere; }
+  .card p { margin: 0 0 6px; font-size: 13px; overflow-wrap: anywhere; }
+  .card .actions { display: flex; gap: 6px; margin-top: 8px; }
+  .card .actions select { flex: 1; padding: 4px 6px; font-size: 12px; }
+  .card .actions button { font-size: 12px; padding: 4px 8px; }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px; }
+  .toolbar label { display: inline-flex; gap: 6px; align-items: center; margin: 0; font-weight: 400; color: var(--muted); }
+  .toolbar input { width: auto; }
+  [data-p="finance"] { --c: var(--finance); --cbg: var(--finance-bg); }
+  [data-p="technical"] { --c: var(--technical); --cbg: var(--technical-bg); }
+  [data-p="sales"] { --c: var(--sales); --cbg: var(--sales-bg); }
+  [data-p="triage"] { --c: var(--triage); --cbg: var(--triage-bg); }
+  [data-p="other"] { --c: var(--muted); }
+  .route[data-p] { color: var(--c); }
+  .bar[data-p] .fill { background: var(--c); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Jev Ticket Manager</h1>
+  <span>Incoming messages are classified by TypeSafe Jev and escalated to Finance, Technical or Sales.</span>
+</header>
+<div class="warn" id="warn">TYPESAFE_API_KEY is not set on the server. Add it to <code>.env</code> and restart.</div>
+
+<main>
+  <section>
+    <div class="panel">
+      <h2>New ticket</h2>
+      <form id="form">
+        <label for="customer">Customer</label>
+        <input id="customer" placeholder="e.g. jane@acme.com">
+        <label for="subject">Subject (optional)</label>
+        <input id="subject" placeholder="Short summary">
+        <label for="message">Message</label>
+        <textarea id="message" required placeholder="Type the customer's question..."></textarea>
+        <div class="samples" id="samples"></div>
+        <button class="primary" id="submit" type="submit">Classify &amp; escalate</button>
+        <div class="error" id="error"></div>
+      </form>
+
+      <div id="result">
+        <h2>Jev's decision</h2>
+        <div class="route" id="r-route"></div>
+        <div class="reason" id="r-reason"></div>
+        <div id="r-bars"></div>
+        <div class="meta" id="r-meta"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="toolbar">
+      <h2 style="margin:0">Persona queues</h2>
+      <label><input type="checkbox" id="show-resolved"> Show resolved</label>
+    </div>
+    <div class="board" id="board"></div>
+  </section>
+</main>
+
+<script>
+const LANES = ["finance", "technical", "sales", "triage"];
+const SAMPLES = [
+  "I was charged twice for my subscription this month, please refund the duplicate.",
+  "Your dashboard has been throwing a 500 error since this morning and my whole team is blocked!",
+  "We're a 50-person company. What does the enterprise plan cost and can we get a demo?",
+  "My card was declined when I tried to upgrade to the Pro plan and now the app won't let me log in.",
+  "hello",
+];
+let personas = {};
+let tickets = [];
+let lastId = null;
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const laneName = (k) => k === "triage" ? "Manual triage" : k === "other" ? "No match" : personas[k]?.name ?? k;
+const pretty = (s) => String(s ?? "").replace(/_/g, " ");
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || `Request failed (${res.status})`);
+  return data;
+}
+
+function renderSamples() {
+  $("samples").innerHTML = SAMPLES.map((s, i) =>
+    `<button type="button" data-i="${i}" title="${esc(s)}">${esc(s.slice(0, 28))}…</button>`).join("");
+  $("samples").onclick = (e) => {
+    const i = e.target.dataset.i;
+    if (i !== undefined) { $("message").value = SAMPLES[i]; $("message").focus(); }
+  };
+}
+
+function renderResult(t) {
+  $("result").style.display = "block";
+  const r = $("r-route");
+  r.dataset.p = t.route;
+  r.textContent = `→ ${laneName(t.route)}`;
+  $("r-reason").textContent = t.reason;
+  const keys = [...Object.keys(personas), "other"];
+  $("r-bars").innerHTML = keys.map((k) => {
+    const p = t.probabilities[k] ?? 0;
+    return `<div class="bar" data-p="${k}"><span>${esc(laneName(k))}</span>
+      <div class="track"><div class="fill" style="width:${(p * 100).toFixed(0)}%"></div></div>
+      <span class="pct">${(p * 100).toFixed(0)}%</span></div>`;
+  }).join("");
+  $("r-meta").innerHTML = metaChips(t) + `<span class="chip">confidence ${t.confidence.toFixed(2)}</span>`;
+}
+
+function metaChips(t) {
+  let html = `<span class="chip ${t.priority.toLowerCase()}">${t.priority}</span>`;
+  if (t.topic) html += `<span class="chip">${esc(pretty(t.topic))}</span>`;
+  html += `<span class="chip">tone: ${esc(t.tone)}</span>`;
+  for (const c of t.cc) html += `<span class="chip">cc ${esc(laneName(c))}</span>`;
+  if (t.manual) html += `<span class="chip">manual</span>`;
+  return html;
+}
+
+function renderBoard() {
+  const showResolved = $("show-resolved").checked;
+  $("board").innerHTML = LANES.map((lane) => {
+    const items = tickets.filter((t) => t.route === lane && (showResolved || t.status !== "resolved"));
+    const desc = lane === "triage" ? "Low confidence or no matching team. A person decides." : personas[lane]?.description ?? "";
+    const cards = items.length ? items.map(card).join("") : `<div class="empty">No tickets</div>`;
+    return `<div class="col" data-p="${lane}">
+      <div class="col-head"><strong>${esc(laneName(lane))}</strong><span class="count">${items.length}</span><p>${esc(desc)}</p></div>
+      <div class="cards">${cards}</div></div>`;
+  }).join("");
+}
+
+function card(t) {
+  const options = LANES.map((l) => `<option value="${l}" ${l === t.route ? "selected" : ""}>${esc(laneName(l))}</option>`).join("");
+  const time = new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return `<div class="card ${t.status === "resolved" ? "resolved" : ""} ${t.id === lastId ? "flash" : ""}" data-p="${t.route}">
+    <div class="card-top"><span>#${t.id} · ${esc(t.customer)}</span><span>${time}</span></div>
+    ${t.subject ? `<h3>${esc(t.subject)}</h3>` : ""}
+    <p>${esc(t.message)}</p>
+    <div class="meta">${metaChips(t)}</div>
+    ${t.status === "resolved" ? "" : `<div class="actions">
+      <select data-assign="${t.id}" aria-label="Reassign ticket ${t.id}">${options}</select>
+      <button data-resolve="${t.id}">Resolve</button></div>`}
+  </div>`;
+}
+
+async function refresh() {
+  tickets = await api("/api/tickets");
+  renderBoard();
+}
+
+$("form").onsubmit = async (e) => {
+  e.preventDefault();
+  $("error").textContent = "";
+  $("submit").disabled = true;
+  $("submit").textContent = "Asking Jev…";
+  try {
+    const t = await api("/api/tickets", { method: "POST", body: JSON.stringify({
+      message: $("message").value, subject: $("subject").value, customer: $("customer").value }) });
+    lastId = t.id;
+    renderResult(t);
+    $("message").value = ""; $("subject").value = "";
+    await refresh();
+  } catch (err) {
+    $("error").textContent = err.message;
+  } finally {
+    $("submit").disabled = false;
+    $("submit").textContent = "Classify & escalate";
+  }
+};
+
+$("board").addEventListener("change", async (e) => {
+  const id = e.target.dataset.assign;
+  if (!id) return;
+  await api(`/api/tickets/${id}/assign`, { method: "POST", body: JSON.stringify({ route: e.target.value }) });
+  refresh();
+});
+$("board").addEventListener("click", async (e) => {
+  const id = e.target.dataset.resolve;
+  if (!id) return;
+  await api(`/api/tickets/${id}/resolve`, { method: "POST" });
+  refresh();
+});
+$("show-resolved").onchange = renderBoard;
+
+(async () => {
+  const info = await api("/api/personas");
+  personas = info.personas;
+  if (!info.configured) $("warn").style.display = "block";
+  renderSamples();
+  refresh();
+})();
+</script>
+</body>
+</html>
